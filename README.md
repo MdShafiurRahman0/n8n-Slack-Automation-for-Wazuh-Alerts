@@ -1,70 +1,113 @@
 
-# Slack Bot Setup & n8n Webhook Integration Guide
+```markdown
+# n8n Slack Automation for Wazuh Alerts
 
-This guide covers the detailed process of creating a Slack Bot, generating an Auth Token, and connecting it to n8n for automated channel management and alerting.
+## 📌 Overview
+This project demonstrates an automated Security Orchestration, Automation, and Response (SOAR) pipeline. It captures security alerts from Wazuh via webhooks and forwards them in real-time to a designated Slack channel using **n8n** (node-based workflow automation tool).
 
----
-
-## 🛠️ Part 1: Slack App & Bot Token Setup
-
-Slack-e bot toiri korar jonno nicher steps gulo follow korun:
-
-1. **Create App:** Go to [api.slack.com/apps](https://api.slack.com/apps) and click **Create New App** -> **From scratch**. App-er ekta nam din ebong workspace select korun.
-2. **Configure Scopes:** Sidebar theke **OAuth & Permissions**-e jan. Niche **Scopes** section-e giye "Bot Token Scopes"-e nicher permission gulo add korun:
-   - `channels:manage` (Channel toiri korar jonno)
-   - `chat:write` (Message pathanor jonno)
-   - `groups:write` (Private channel manage korar jonno)
-3. **Install App:** Page-er upore giye **Install to Workspace** click korun ebong allow korun.
-4. **Copy Token:** Install hoye gele apni ekta **Bot User OAuth Token** paben (jeta `xoxb-` diye shuru hoy). Eti copy kore n8n-er jonno save korun.
+## 🚀 Prerequisites
+* **Docker** installed on your system.
+* A **Slack Workspace** with permissions to create apps.
+* **Wazuh Manager** (optional, for final integration).
 
 ---
 
-## 🚀 Part 2: n8n Webhook & Slack Integration Steps
+## 🛠️ Step-by-Step Implementation Guide
 
-n8n-e workflow setup korar detail process:
-
-<Steps>
-{/* Reason: Procedural dependency is critical here — credentials must exist before the node can function. */}
-  <Step title="Webhook Node Setup" subtitle="Receiving Wazuh Data">
-    n8n-e prothome ekta **Webhook Node** add korun. Method `POST` select korun ebong path din (e.g., `wazuh-alerts`). Test URL-ti copy kore Wazuh-er `ossec.conf`-e add korun.
-  </Step>
-  <Step title="Slack Credentials" subtitle="Connecting n8n to Slack">
-    n8n-e **Slack Node** add korun. 'Credential for Slack' section-e 'New Credential' select korun. Authentication method **Access Token** din ebong Slack theke copy kora `xoxb-` token-ti paste korun.
-  </Step>
-  <Step title="Channel Creation Logic" subtitle="Resource & Operation">
-    Jodi channel create korte chan:
-    - **Resource:** Channel
-    - **Operation:** Create
-    - **Name:** Alert theke pawa data (e.g., `alert-{{ $json.id }}`)
-  </Step>
-  <Step title="Send Message" subtitle="Formatting Alert">
-    Channel create hoye gele arekta Slack node diye message pathan. 
-    - **Resource:** Message
-    - **Operation:** Post
-    - **Channel:** Agerto node theke pawa ID ba manual ID.
-  </Step>
-</Steps>
-
----
-
-## 🧪 Testing and Commands
-
-Apnar setup thik ache kina check korar jonno n8n-er Webhook URL-e nicher command-ti diye test alert pathan:
+### Step 1: n8n Docker Setup
+Run n8n locally using Docker. Execute the following command in your terminal:
 
 ```bash
-curl -X POST http://YOUR_N8N_IP:5678/webhook-test/wazuh-alerts \
+docker run -it --rm \
+  --name n8n \
+  -p 5678:5678 \
+  -e N8N_ENFORCEMENT_AGREEMENT=true \
+  -v n8n_data:/home/node/.n8n \
+  n8nio/n8n
+```
+
+### Step 2: Access n8n & Create a Webhook
+1. Open your browser and navigate to `http://localhost:5678`.
+2. Create a new workflow.
+3. Click the **+** button, search for **Webhook**, and add the node.
+4. Set the **HTTP Method** to `POST`.
+5. Copy the **Test URL**.
+6. Click on **Listen for test event** to keep it active.
+
+### Step 3: Configure Slack Bot & Generate Token
+To send automated messages, we need to create a Slack app with the appropriate permissions.
+
+**1. Create the Slack App:**
+* Navigate to the [Slack API Dashboard](https://api.slack.com/apps).
+* Click **Create New App** > **From scratch**.
+* Give it a meaningful name (e.g., `Wazuh-Alert-Bot`) and select your target workspace.
+
+**2. Assign Permissions (Scopes):**
+* From the left-hand menu, select **OAuth & Permissions**.
+* Scroll down to the **Scopes** section.
+* Under **Bot Token Scopes**, click "Add an OAuth Scope" and add `chat:write` (this allows the bot to post messages).
+
+**3. Install and Generate Token:**
+* Scroll back to the top of the page and click **Install to Workspace**, then click **Allow**.
+* Copy the **Bot User OAuth Token** (it starts with `xoxb-`). Save this securely, as you will need it for n8n.
+
+**4. Prepare the Slack Channel:**
+* Open your Slack client and create a dedicated channel (e.g., `#wazuh-alerts`).
+* Invite your newly created bot to this channel by typing `/invite @Wazuh-Alert-Bot` in the chat.
+
+### Step 4: Integrate Slack in n8n Workflow
+Now, we will configure n8n to format the incoming Wazuh data and push it to Slack.
+
+**1. Add the Slack Node:**
+* Go back to your active n8n workflow.
+* Click the **+** icon next to your Webhook node, search for **Slack**, and add it.
+
+**2. Authenticate the Connection:**
+* In the Slack node settings, set **Authentication** to `Access Token`.
+* Click to create a new credential, paste the `xoxb-...` token you copied in Step 3, and save it.
+
+**3. Configure the Action:**
+* **Resource:** Select `Message`.
+* **Operation:** Select `Post`.
+* **Channel:** Enter your exact channel name (e.g., `#wazuh-alerts`).
+
+**4. Map the Dynamic Data:**
+* In the **Text** field, use n8n expressions to format the incoming JSON data from Wazuh. You can use a structured template like this:
+  ```text
+  🚨 *Critical Wazuh Alert Detected!* 🚨
+  *Rule Description:* {{$json.body.rule.description}}
+  *Severity Level:* {{$json.body.rule.level}}
+  *Agent Name:* {{$json.body.agent.name}}
+  ```
+* Save the node and toggle the workflow at the top right to **Active**.
+
+### Step 5: Test the Pipeline via API (cURL)
+To verify that the webhook is receiving data and forwarding it to Slack, send a POST request using your terminal. 
+
+*Replace `YOUR_WEBHOOK_ID` with the actual ID from your n8n Webhook Test URL.*
+
+```bash
+curl -X POST http://localhost:5678/webhook-test/YOUR_WEBHOOK_ID \
      -H "Content-Type: application/json" \
      -d '{
-           "id": "101",
-           "rule": {"description": "Suspicious Login Detected"},
-           "agent": {"name": "DB-Server"}
+           "rule": {
+             "description": "Critical: SSH Brute Force Attempt Detected",
+             "level": 10
+           },
+           "agent": {
+             "name": "Web-Server-01",
+             "ip": "192.168.1.100"
+           }
          }'
 ```
+If successful, you will instantly receive a formatted message in your designated Slack channel!
 
-> **Note:** Slack Bot-ke oboshoy channel-e **Invite** korte hobe (`/invite @YourBotName`) jodi channel-ti bot-er toiri na hoy.
+---
+
+## 👨‍💻 Author
+**Md. Shafiur Rahman**
+* GitHub: [@MdShafiurRahman0](https://github.com/MdShafiurRahman0)
+* Email: shafiur.rahman.shadat@gmail.com
 ```
 
-<Elicitations message="Slack automation-ke aro advance korte nicher topic gulo dekhte paren:">
-  <Elicitation label="Slack-e interactive 'Action Buttons' add kora" query="How to add interactive buttons in Slack messages via n8n to acknowledge or close a Wazuh alert?" />
-  <Elicitation label="Multiple channel-e conditional routing kora" query="How to route Wazuh alerts to different Slack channels based on rule level or agent group in n8n?" />
-</Elicitations>
+**সংক্ষিপ্ত ব্যাখ্যা:** এই সম্পূর্ণ ডকুমেন্টেশনটিতে তোমার প্রজেক্টের শুরু থেকে শেষ পর্যন্ত প্রতিটি কাজ পরিষ্কার এবং লজিক্যাল সাব-সেকশনে ভাগ করা হয়েছে, যা অন্য ডেভেলপারদের সহজেই প্রোজেক্টটি বুঝতে সাহায্য করবে। গিটহাব রিপোজিটরিতে একটি `README.md` ফাইল তৈরি করে এই কোডটুকু পেস্ট করে দিলেই কাজ হয়ে যাবে।
