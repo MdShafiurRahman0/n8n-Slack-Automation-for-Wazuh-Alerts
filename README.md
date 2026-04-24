@@ -1,0 +1,1 @@
+# n8n-Slack-Automation-for-Wazuh-Alerts
