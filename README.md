@@ -1,95 +1,70 @@
-# Wazuh to Slack Alert Automation via n8n
 
-This repository contains the configuration for a security automation pipeline that forwards critical Wazuh alerts to a Slack channel using n8n. This ensures your security team gets real-time notifications for high-priority events.
+# Slack Bot Setup & n8n Webhook Integration Guide
 
----
-
-## 🧠 System Logic & Workflow
-
-1.  **Event Detection (Wazuh):** Wazuh Manager detects a security event (e.g., brute force, file integrity change).
-2.  **Trigger (Webhook):** If the alert level meets the threshold (e.g., Level >= 10), Wazuh sends a POST request to the n8n Webhook URL.
-3.  **Data Parsing (n8n):** n8n extracts key info: Agent Name, Rule Description, Severity Level, and Source IP.
-4.  **Slack Integration:** n8n sends a formatted "Incoming Security Alert" message to a designated Slack channel.
+This guide covers the detailed process of creating a Slack Bot, generating an Auth Token, and connecting it to n8n for automated channel management and alerting.
 
 ---
 
-## 📋 Prerequisites
+## 🛠️ Part 1: Slack App & Bot Token Setup
 
-* **Wazuh Manager:** Access to `ossec.conf`.
-* **n8n Instance:** Running (Docker/Cloud).
-* **Slack Workspace:** Permissions to create an App or use Incoming Webhooks.
+Slack-e bot toiri korar jonno nicher steps gulo follow korun:
 
----
-
-## 🚀 Step-by-Step Implementation
-
-### 1. Setup Slack App & Webhook
-1. Go to [api.slack.com/apps](https://api.slack.com/apps) and create a **New App**.
-2. Enable **Incoming Webhooks**.
-3. Click **Add New Webhook to Workspace** and select your security channel.
-4. **Copy the Webhook URL.**
-
-### 2. Configure n8n Workflow
-1.  **Webhook Node:** Create a `POST` webhook. Note the URL.
-2.  **Slack Node:** * **Resource:** Message
-    * **Operation:** Post
-    * **Authentication:** Use Slack OAuth or the Webhook URL from Step 1.
-    * **Text:** ```text
-        🚨 *Critical Security Alert* 🚨
-        *Rule:* {{ $json.body.rule.description }}
-        *Level:* {{ $json.body.rule.level }}
-        *Agent:* {{ $json.body.agent.name }}
-        *IP:* {{ $json.body.data.srcip }}
-        ```
-
-### 3. Wazuh Manager Configuration
-Open your Wazuh config file:
-```bash
-sudo nano /var/ossec/etc/ossec.conf
-```
-
-Add this block:
-```xml
-<integration>
-  <name>custom-n8n-slack</name>
-  <hook_url>http://YOUR_N8N_IP:5678/webhook/wazuh-to-slack</hook_url>
-  <level>10</level>
-  <alert_format>json</alert_format>
-</integration>
-```
-
-**Restart Wazuh:**
-```bash
-sudo systemctl restart wazuh-manager
-```
+1. **Create App:** Go to [api.slack.com/apps](https://api.slack.com/apps) and click **Create New App** -> **From scratch**. App-er ekta nam din ebong workspace select korun.
+2. **Configure Scopes:** Sidebar theke **OAuth & Permissions**-e jan. Niche **Scopes** section-e giye "Bot Token Scopes"-e nicher permission gulo add korun:
+   - `channels:manage` (Channel toiri korar jonno)
+   - `chat:write` (Message pathanor jonno)
+   - `groups:write` (Private channel manage korar jonno)
+3. **Install App:** Page-er upore giye **Install to Workspace** click korun ebong allow korun.
+4. **Copy Token:** Install hoye gele apni ekta **Bot User OAuth Token** paben (jeta `xoxb-` diye shuru hoy). Eti copy kore n8n-er jonno save korun.
 
 ---
 
-## 🧪 Testing the Integration
+## 🚀 Part 2: n8n Webhook & Slack Integration Steps
 
-Test the connection from the Wazuh server using `curl`:
+n8n-e workflow setup korar detail process:
+
+<Steps>
+{/* Reason: Procedural dependency is critical here — credentials must exist before the node can function. */}
+  <Step title="Webhook Node Setup" subtitle="Receiving Wazuh Data">
+    n8n-e prothome ekta **Webhook Node** add korun. Method `POST` select korun ebong path din (e.g., `wazuh-alerts`). Test URL-ti copy kore Wazuh-er `ossec.conf`-e add korun.
+  </Step>
+  <Step title="Slack Credentials" subtitle="Connecting n8n to Slack">
+    n8n-e **Slack Node** add korun. 'Credential for Slack' section-e 'New Credential' select korun. Authentication method **Access Token** din ebong Slack theke copy kora `xoxb-` token-ti paste korun.
+  </Step>
+  <Step title="Channel Creation Logic" subtitle="Resource & Operation">
+    Jodi channel create korte chan:
+    - **Resource:** Channel
+    - **Operation:** Create
+    - **Name:** Alert theke pawa data (e.g., `alert-{{ $json.id }}`)
+  </Step>
+  <Step title="Send Message" subtitle="Formatting Alert">
+    Channel create hoye gele arekta Slack node diye message pathan. 
+    - **Resource:** Message
+    - **Operation:** Post
+    - **Channel:** Agerto node theke pawa ID ba manual ID.
+  </Step>
+</Steps>
+
+---
+
+## 🧪 Testing and Commands
+
+Apnar setup thik ache kina check korar jonno n8n-er Webhook URL-e nicher command-ti diye test alert pathan:
 
 ```bash
-curl -X POST http://YOUR_N8N_IP:5678/webhook/wazuh-to-slack \
+curl -X POST http://YOUR_N8N_IP:5678/webhook-test/wazuh-alerts \
      -H "Content-Type: application/json" \
      -d '{
-           "rule": {"level": 12, "description": "SSH Brute Force Attempt"},
-           "agent": {"name": "Production-Server-01"},
-           "data": {"srcip": "192.168.1.50"}
+           "id": "101",
+           "rule": {"description": "Suspicious Login Detected"},
+           "agent": {"name": "DB-Server"}
          }'
 ```
 
-Check your Slack channel; you should see a formatted alert instantly!
-
----
-
-## 📌 Optimization Tips
-* **Level Filtering:** Use Level 12+ for Slack to avoid "alert fatigue."
-* **Color Coding:** In n8n, you can use "Attachments" in the Slack node to make the message sidebar **RED** for critical and **YELLOW** for warnings.
+> **Note:** Slack Bot-ke oboshoy channel-e **Invite** korte hobe (`/invite @YourBotName`) jodi channel-ti bot-er toiri na hoy.
 ```
 
----
-
-> **Pro-Tip:** Jodi n8n node-e Slack message pathate somossa hoy, tobe Slack-er **"Block Kit Builder"** use kore aro sundor visual design toiri korte paren (Buttons, Images, Divider lines shoho).
-
-<FollowUp label="Slack alert-e 'Critical' hole Red ar 'Warning' hole Yellow color logic add korbo kivabe?" query="How to use n8n Switch and Slack Block Kit to color-code Wazuh alerts by severity (Red for Critical, Yellow for Warning)?" />
+<Elicitations message="Slack automation-ke aro advance korte nicher topic gulo dekhte paren:">
+  <Elicitation label="Slack-e interactive 'Action Buttons' add kora" query="How to add interactive buttons in Slack messages via n8n to acknowledge or close a Wazuh alert?" />
+  <Elicitation label="Multiple channel-e conditional routing kora" query="How to route Wazuh alerts to different Slack channels based on rule level or agent group in n8n?" />
+</Elicitations>
