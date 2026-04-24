@@ -1,5 +1,4 @@
 
-```markdown
 # n8n Slack Automation for Wazuh Alerts
 
 ## 📌 Overview
@@ -73,12 +72,14 @@ Now, we will configure n8n to format the incoming Wazuh data and push it to Slac
 
 **4. Map the Dynamic Data:**
 * In the **Text** field, use n8n expressions to format the incoming JSON data from Wazuh. You can use a structured template like this:
-  ```text
-  🚨 *Critical Wazuh Alert Detected!* 🚨
-  *Rule Description:* {{$json.body.rule.description}}
-  *Severity Level:* {{$json.body.rule.level}}
-  *Agent Name:* {{$json.body.agent.name}}
-  ```
+
+```text
+🚨 *Critical Wazuh Alert Detected!* 🚨
+*Rule Description:* {{$json.body.rule.description}}
+*Severity Level:* {{$json.body.rule.level}}
+*Agent Name:* {{$json.body.agent.name}}
+```
+
 * Save the node and toggle the workflow at the top right to **Active**.
 
 ### Step 5: Test the Pipeline via API (cURL)
@@ -100,6 +101,7 @@ curl -X POST http://localhost:5678/webhook-test/YOUR_WEBHOOK_ID \
            }
          }'
 ```
+
 If successful, you will instantly receive a formatted message in your designated Slack channel!
 
 ---
@@ -110,4 +112,4 @@ If successful, you will instantly receive a formatted message in your designated
 * Email: shafiur.rahman.shadat@gmail.com
 ```
 
-**সংক্ষিপ্ত ব্যাখ্যা:** এই সম্পূর্ণ ডকুমেন্টেশনটিতে তোমার প্রজেক্টের শুরু থেকে শেষ পর্যন্ত প্রতিটি কাজ পরিষ্কার এবং লজিক্যাল সাব-সেকশনে ভাগ করা হয়েছে, যা অন্য ডেভেলপারদের সহজেই প্রোজেক্টটি বুঝতে সাহায্য করবে। গিটহাব রিপোজিটরিতে একটি `README.md` ফাইল তৈরি করে এই কোডটুকু পেস্ট করে দিলেই কাজ হয়ে যাবে।
+**সংক্ষিপ্ত ব্যাখ্যা:** গিটহাবের README ফাইলে কোড ব্লকগুলো (
