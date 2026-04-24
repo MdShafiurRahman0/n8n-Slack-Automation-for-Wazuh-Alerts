@@ -109,7 +109,4 @@ If successful, you will instantly receive a formatted message in your designated
 ## 👨‍💻 Author
 **Md. Shafiur Rahman**
 * GitHub: [@MdShafiurRahman0](https://github.com/MdShafiurRahman0)
-* Email: shafiur.rahman.shadat@gmail.com
-```
-
-**সংক্ষিপ্ত ব্যাখ্যা:** গিটহাবের README ফাইলে কোড ব্লকগুলো (
+* Email: shafiur.rahman.shadat@gmai
